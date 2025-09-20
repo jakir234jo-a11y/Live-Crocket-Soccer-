@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cricket Score Web App</title>
+<style>
+body {
+font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+margin: 0;
+background-color: #f4f4f4;
+color: #333;
+}
+
+
+.container {
+padding: 20px;
+}
+
+.header {
+background-color: #007bff;
+color: white;
+padding: 15px 20px;
+text-align: center;
+font-size: 1.5em;
+}
+
+.nav {
+display: flex;
+justify-content: space-around;
+background-color: #333;
+padding: 10px 0;
+position: fixed;
+bottom: 0;
+width: 100%;
+box-shadow: 0 -2px 5px rgba(0,0,0,0.1);
+}
+
+.nav-btn {
+background: none;
+border: none;
+color: white;
+padding: 10px 15px;
+cursor: pointer;
+font-size: 1em;
+}
+
+.nav-btn.active {
+color: #007bff;
+border-bottom: 2px solid #007bff;
+}
+
+.screen {
+display: none;
+padding-bottom: 60px; /* To prevent content from being hidden by the nav bar */
+}
+
+.screen.active {
+display: block;
+}
+
+.match-card, .upcoming-match, .series-item, .team-item {
+background: white;
+border-radius: 8px;
+box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+padding: 15px;
+margin-bottom: 15px;
+}
+
+.match-card h3, .upcoming-match h3, .series-item h3, .team-item h3 {
+margin-top: 0;
+}
+
+.score-info {
+display: flex;
+justify-content: space-between;
+align-items: center;
+margin-top: 10px;
+}
+
+.status {
+color: #28a745;
+font-weight: bold;
+}
+
+.reminder-btn {
+background-color: #007bff;
+color: white;
+border: none;
+padding: 8px 12px;
+border-radius: 5px;
+cursor: pointer;
+}
+
+.search-bar {
+width: 100%;
+padding: 10px;
+margin-bottom: 20px;
+border: 1px solid #ddd;
+border-radius: 5px;
+box-sizing: border-box;
+}
+
+.player-list {
+display: none;
+margin-top: 10px;
+padding-left: 20px;
+}
+
+.player-list li {
+margin-bottom: 5px;
+}
+</style>
+
+</head>
+<body>
+
+<div class="header">
+Cricket Scores
+</div>
+
+<div class="container">
+<!-- Live Matches Screen - This will be populated by the API -->
+<div id="live" class="screen active">
+<h2>Live Matches</h2>
+<p>Loading live scores...</p>
+</div>
+
+<!-- Upcoming Matches Screen -->
+
+<div id="upcoming" class="screen">
+<h2>Upcoming Matches</h2>
+<div class="upcoming-match">
+<h3>Pakistan vs New Zealand</h3>
+<p>Date: September 20, 2025, 7:30 PM</p>
+<button class="reminder-btn">Set Reminder</button>
+</div>
+<div class="upcoming-match">
+<h3>West Indies vs Bangladesh</h3>
+<p>Date: September 22, 2025, 8:00 PM</p>
+<button class="reminder-btn">Set Reminder</button>
+</div>
+</div>
+
+<!-- Series & Tournaments Screen -->
+
+<div id="series" class="screen">
+<h2>Series & Tournaments</h2>
+<div class="series-item">
+<h3>ICC World Cup 2025</h3>
+<h4>Standings</h4>
+<p>1. India</p>
+<p>2. Australia</p>
+<p>3. England</p>
+<h4>Recent Results</h4>
+<p>India beat Australia by 7 wickets.</p>
+<p>England beat South Africa by 55 runs.</p>
+</div>
+<div class="series-item">
+<h3>Asia Cup 2025</h3>
+<h4>Standings</h4>
+<p>1. Pakistan</p>
+<p>2. Sri Lanka</p>
+<p>3. Bangladesh</p>
+<h4>Recent Results</h4>
+<p>Pakistan beat Sri Lanka by 5 wickets.</p>
+<p>Bangladesh beat Afghanistan by 20 runs.</p>
+</div>
+</div>
+
+<!-- Teams & Players Screen -->
+
+<div id="teams" class="screen">
+<h2>Teams & Players</h2>
+<input type="text" id="teamSearch" class="search-bar" onkeyup="filterTeams()" placeholder="Search for teams..">
+<div id="teamList">
+<div class="team-item" onclick="togglePlayers('player-list-1')">
+<h3>India</h3>
+<ul id="player-list-1" class="player-list">
+<li>Virat Kohli - Matches: 250, Runs: 12000</li>
+<li>Rohit Sharma - Matches: 230, Runs: 10000</li>
+<li>Jasprit Bumrah - Matches: 150, Wickets: 300</li>
+</ul>
+</div>
+<div class="team-item" onclick="togglePlayers('player-list-2')">
+<h3>Australia</h3>
+<ul id="player-list-2" class="player-list">
+<li>Steve Smith - Matches: 200, Runs: 9000</li>
+<li>David Warner - Matches: 220, Runs: 9500</li>
+<li>Pat Cummins - Matches: 180, Wickets: 350</li>
+</ul>
+</div>
+</div>
+</div>
+</div>
+
+<nav class="nav">
+<button class="nav-btn active" onclick="showScreen('live', this)">Live</button>
+<button class="nav-btn" onclick="showScreen('upcoming', this)">Upcoming</button>
+<button class="nav-btn" onclick="showScreen('series', this)">Series</button>
+<button class="nav-btn" onclick="showScreen('teams', this)">Teams</button>
+</nav>
+
+<script>
+// Function to fetch and display live matches from the API
+function fetchLiveMatches() {
+    const apiKey = '5f264a7e-2ea1-4d7f-a946-6b148881ec47';
+    const url = `https://api.cricapi.com/v1/currentMatches?apikey=${apiKey}&offset=0`;
+    
+    const liveMatchesContainer = document.getElementById('live');
+    liveMatchesContainer.innerHTML = '<h2>Live Matches</h2><p>Loading live scores...</p>';
+
+    fetch(url)
+        .then(response => response.json())
+        .then(data => {
+            liveMatchesContainer.innerHTML = '<h2>Live Matches</h2>'; // Clear loading message
+
+            if (data.data && data.data.length > 0) {
+                data.data.forEach(match => {
+                    const matchCard = document.createElement('div');
+                    matchCard.className = 'match-card';
+
+                    const teams = match.teams.join(' vs ');
+                    
+                    let scoreInfoHTML = '<div class="score-info">';
+                    if (match.score && match.score.length > 0) {
+                        match.score.forEach(s => {
+                            scoreInfoHTML += `<div><strong>${s.inning.split(' ')[0]}:</strong> ${s.r}/${s.w} (${s.o} Overs)</div>`;
+                        });
+                    } else {
+                        scoreInfoHTML += '<div>Score not available yet.</div>';
+                    }
+                    scoreInfoHTML += '</div>';
+
+                    const status = `<p class="status">${match.status}</p>`;
+
+                    matchCard.innerHTML = `
+                        <h3>${teams}</h3>
+                        ${scoreInfoHTML}
+                        ${status}
+                    `;
+                    liveMatchesContainer.appendChild(matchCard);
+                });
+            } else {
+                liveMatchesContainer.innerHTML += '<p>No live matches currently.</p>';
+            }
+        })
+        .catch(error => {
+            console.error('Error fetching live matches:', error);
+            liveMatchesContainer.innerHTML = '<h2>Live Matches</h2><p>Failed to load scores. Please try again later.</p>';
+        });
+}
+
+function showScreen(screenId, element) {
+    const screens = document.querySelectorAll('.screen');
+    screens.forEach(screen => {
+        screen.classList.remove('active');
+    });
+    document.getElementById(screenId).classList.add('active');
+
+    const buttons = document.querySelectorAll('.nav-btn');
+    buttons.forEach(button => {
+        button.classList.remove('active');
+    });
+    element.classList.add('active');
+
+    // If the live screen is selected, refresh the data
+    if (screenId === 'live') {
+        fetchLiveMatches();
+    }
+}
+
+function filterTeams() {
+    const input = document.getElementById('teamSearch');
+    const filter = input.value.toUpperCase();
+    const teamList = document.getElementById('teamList');
+    const teams = teamList.getElementsByClassName('team-item');
+
+    for (let i = 0; i < teams.length; i++) {
+        const h3 = teams[i].getElementsByTagName('h3')[0];
+        if (h3.innerHTML.toUpperCase().indexOf(filter) > -1) {
+            teams[i].style.display = "";
+        } else {
+            teams[i].style.display = "none";
+        }
+    }
+}
+
+function togglePlayers(playerListId) {
+    const playerList = document.getElementById(playerListId);
+    if (playerList.style.display === 'block') {
+        playerList.style.display = 'none';
+    } else {
+        playerList.style.display = 'block';
+    }
+}
+
+// Fetch live matches when the page loads for the first time
+document.addEventListener('DOMContentLoaded', fetchLiveMatches);
+</script>
+
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+
